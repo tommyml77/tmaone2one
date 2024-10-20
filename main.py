@@ -6,7 +6,7 @@
 # Установите необходимые библиотеки перед началом разработки:
 # pip install Flask google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client python-telegram-bot pyyaml
 
-from flask import Flask, request, session as flask_session, redirect
+from flask import Flask, request, redirect
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,7 +14,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import os
 import logging
 import json
-from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +48,9 @@ flow = Flow.from_client_config(
     redirect_uri=REDIRECT_URI
 )
 
+# Хранение состояния авторизации (временное хранилище)
+auth_states = {}
+
 # Команда /start для Telegram бота
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [[InlineKeyboardButton("Авторизоваться через Google", callback_data='authorize')]]
@@ -63,7 +66,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if query.data == 'authorize':
         authorization_url, state = flow.authorization_url()
-        flask_session["state"] = state
+        auth_states[query.from_user.id] = state
         await query.edit_message_text(text=f"Пожалуйста, перейдите по следующей ссылке для авторизации: {authorization_url}")
 
 application.add_handler(CallbackQueryHandler(button))
@@ -78,23 +81,24 @@ def callback():
         logger.error(f"Ошибка при получении токена: {str(e)}")
         return f"Ошибка при получении токена: {str(e)}"
 
-    if "state" not in flask_session or flask_session["state"] != request.args.get("state"):
+    user_id = request.args.get("state")
+    if user_id not in auth_states or auth_states[user_id] != request.args.get("state"):
         logger.error("Ошибка: Неверное состояние.")
         return "Ошибка: Неверное состояние."
 
     credentials = flow.credentials
-    flask_session['credentials'] = credentials_to_dict(credentials)
+    auth_states[user_id] = credentials_to_dict(credentials)
     logger.info("Авторизация успешна, вернитесь в Telegram для продолжения.")
     return "Авторизация успешна! Вернитесь в Telegram, чтобы продолжить."
 
 # Получение событий из Google Календаря через Telegram бота
 async def calendar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    credentials = flask_session.get('credentials')
-    if not credentials:
+    credentials_dict = auth_states.get(update.message.from_user.id)
+    if not credentials_dict:
         await update.message.reply_text("Вам нужно авторизоваться через Google. Используйте /start для начала.")
         return
 
-    credentials = build_credentials_from_dict(credentials)
+    credentials = build_credentials_from_dict(credentials_dict)
     service = build('calendar', 'v3', credentials=credentials)
 
     # Получение списка событий из основного календаря пользователя
@@ -143,14 +147,13 @@ def credentials_to_dict(credentials):
 
 # Создание объекта Credentials из словаря
 def build_credentials_from_dict(credentials_dict):
-    from google.oauth2.credentials import Credentials
     return Credentials(
         token=credentials_dict['token'],
         refresh_token=credentials_dict['refresh_token'],
         token_uri=credentials_dict['token_uri'],
         client_id=credentials_dict['client_id'],
-        client_secret': credentials_dict['client_secret'],
-        'scopes': credentials_dict['scopes']
+        client_secret=credentials_dict['client_secret'],
+        scopes=credentials_dict['scopes']
     )
 
 # Установка вебхука для Telegram бота
