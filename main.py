@@ -40,9 +40,6 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Только для лока�
 # Проверка текущей рабочей директории
 logger.info("Текущая рабочая директория: %s", os.getcwd())
 
-# Изменение текущей рабочей директории на директорию скрипта
-os.chdir(os.path.dirname(__file__))
-
 # Создание Flow для аутентификации
 client_secrets = json.loads(CLIENT_SECRETS_JSON)
 flow = Flow.from_client_config(
@@ -163,15 +160,12 @@ def telegram_webhook():
     application.update_queue.put_nowait(update)
     return "", 200
 
-if __name__ == "__main__":
-    # Устанавливаем вебхук для Telegram
-    logger.info("Установка вебхука для Telegram бота")
-    application.run_webhook(
-        listen="0.0.0.0",
-        port=5000,
-        url_path=f"/webhook/{TELEGRAM_TOKEN}",
-        webhook_url=f"https://{MY_DOMAIN}/webhook/{TELEGRAM_TOKEN}"
-    )
-    # Запуск Flask приложения для обработки Google OAuth callback и Telegram webhook
-    logger.info("Запуск Flask приложения")
-    app.run("0.0.0.0", port=5000, debug=True)
+# Запуск Flask приложения для обработки Google OAuth callback и Telegram webhook
+logger.info("Установка вебхука для Telegram бота")
+application.run_webhook(
+    listen="0.0.0.0",
+    port=5000,
+    url_path=f"/webhook/{TELEGRAM_TOKEN}",
+    webhook_url=f"https://{MY_DOMAIN}/webhook/{TELEGRAM_TOKEN}"
+)
+logger.info("Запуск Flask приложения")
