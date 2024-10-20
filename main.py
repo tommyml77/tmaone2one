@@ -13,6 +13,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import os
 import logging
+import json
+from google.oauth2.service_account import Credentials
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +25,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 REDIRECT_URI = os.getenv('REDIRECT_URI')
 MY_DOMAIN = os.getenv('MY_DOMAIN')
-CLIENT_SECRETS_FILE = os.getenv('CLIENT_SECRETS_FILE')
+CLIENT_SECRETS_JSON = os.getenv('CLIENT_SECRETS_FILE')
 
 # Настройка Flask приложения
 app = Flask(__name__)
@@ -35,16 +37,16 @@ application = Application.builder().token(TELEGRAM_TOKEN).build()
 # Установите свой CLIENT_ID и CLIENT_SECRET от Google Developer Console
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Только для локального тестирования
 
-# Проверка текущей рабочей директории и абсолютного пути к файлу client_secrets.json
+# Проверка текущей рабочей директории
 logger.info("Текущая рабочая директория: %s", os.getcwd())
-logger.info("Абсолютный путь к client_secrets.json: %s", os.path.abspath(CLIENT_SECRETS_FILE))
 
 # Изменение текущей рабочей директории на директорию скрипта
 os.chdir(os.path.dirname(__file__))
 
 # Создание Flow для аутентификации
-flow = Flow.from_client_secrets_file(
-    CLIENT_SECRETS_FILE,
+client_secrets = json.loads(CLIENT_SECRETS_JSON)
+flow = Flow.from_client_config(
+    client_secrets,
     scopes=["https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/userinfo.profile"],
     redirect_uri=REDIRECT_URI
 )
