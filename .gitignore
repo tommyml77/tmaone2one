@@ -2,3 +2,4 @@ secrs/
 __pycache__/
 *.log
 .vercel
+client_secrets.json

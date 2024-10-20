@@ -12,6 +12,11 @@ from googleapiclient.discovery import build
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import os
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Загрузка констант из переменных окружения
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -31,8 +36,8 @@ application = Application.builder().token(TELEGRAM_TOKEN).build()
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Только для локального тестирования
 
 # Проверка текущей рабочей директории и абсолютного пути к файлу client_secrets.json
-print("Текущая рабочая директория:", os.getcwd())
-print("Абсолютный путь к client_secrets.json:", os.path.abspath(CLIENT_SECRETS_FILE))
+logger.info("Текущая рабочая директория: %s", os.getcwd())
+logger.info("Абсолютный путь к client_secrets.json: %s", os.path.abspath(CLIENT_SECRETS_FILE))
 
 # Изменение текущей рабочей директории на директорию скрипта
 os.chdir(os.path.dirname(__file__))
@@ -68,15 +73,19 @@ application.add_handler(CallbackQueryHandler(button))
 @app.route("/callback")
 def callback():
     try:
+        logger.info("Получение токена через callback")
         flow.fetch_token(authorization_response=request.url)
     except Exception as e:
+        logger.error(f"Ошибка при получении токена: {str(e)}")
         return f"Ошибка при получении токена: {str(e)}"
 
     if "state" not in flask_session or flask_session["state"] != request.args.get("state"):
+        logger.error("Ошибка: Неверное состояние.")
         return "Ошибка: Неверное состояние."
 
     credentials = flow.credentials
     flask_session['credentials'] = credentials_to_dict(credentials)
+    logger.info("Авторизация успешна, вернитесь в Telegram для продолжения.")
     return "Авторизация успешна! Вернитесь в Telegram, чтобы продолжить."
 
 # Получение событий из Google Календаря через Telegram бота
@@ -90,12 +99,18 @@ async def calendar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     service = build('calendar', 'v3', credentials=credentials)
 
     # Получение списка событий из основного календаря пользователя
-    events_result = service.events().list(
-        calendarId='primary',
-        maxResults=10,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
+    try:
+        events_result = service.events().list(
+            calendarId='primary',
+            maxResults=10,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+    except Exception as e:
+        logger.error(f"Ошибка при получении событий из календаря: {str(e)}")
+        await update.message.reply_text("Ошибка при получении событий из календаря.")
+        return
+
     events = events_result.get('items', [])
 
     if not events:
@@ -148,6 +163,7 @@ def telegram_webhook():
 
 if __name__ == "__main__":
     # Устанавливаем вебхук для Telegram
+    logger.info("Установка вебхука для Telegram бота")
     application.run_webhook(
         listen="0.0.0.0",
         port=5000,
@@ -155,4 +171,5 @@ if __name__ == "__main__":
         webhook_url=f"https://{MY_DOMAIN}/webhook/{TELEGRAM_TOKEN}"
     )
     # Запуск Flask приложения для обработки Google OAuth callback и Telegram webhook
+    logger.info("Запуск Flask приложения")
     app.run("0.0.0.0", port=5000, debug=True)
