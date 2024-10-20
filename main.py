@@ -12,25 +12,23 @@ from googleapiclient.discovery import build
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import os
-import yaml
 
-# Загрузка констант из файла consts.yaml
-with open(os.path.join(os.path.dirname(__file__), 'secrs', 'consts.yaml'), 'r') as file:
-    config = yaml.safe_load(file)
+# Загрузка констант из переменных окружения
+SECRET_KEY = os.getenv('SECRET_KEY')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+REDIRECT_URI = os.getenv('REDIRECT_URI')
+MY_DOMAIN = os.getenv('MY_DOMAIN')
+CLIENT_SECRETS_FILE = os.getenv('CLIENT_SECRETS_FILE')
 
 # Настройка Flask приложения
 app = Flask(__name__)
-app.secret_key = config['SECRET_KEY']  # Замените на ваш собственный секретный ключ
+app.secret_key = SECRET_KEY  # Замените на ваш собственный секретный ключ
 
 # Настройка Telegram Bot
-TELEGRAM_TOKEN = config['TELEGRAM_TOKEN']
 application = Application.builder().token(TELEGRAM_TOKEN).build()
 
 # Установите свой CLIENT_ID и CLIENT_SECRET от Google Developer Console
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Только для локального тестирования
-CLIENT_SECRETS_FILE = os.path.join(os.path.dirname(__file__), "secrs", "client_secrets.json")
-REDIRECT_URI = config['REDIRECT_URI']
-MY_DOMAIN = config['MY_DOMAIN']
 
 # Проверка текущей рабочей директории и абсолютного пути к файлу client_secrets.json
 print("Текущая рабочая директория:", os.getcwd())
