@@ -1,0 +1,4 @@
+secrs/
+__pycache__/
+*.log
+.vercel
