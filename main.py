@@ -149,8 +149,8 @@ def build_credentials_from_dict(credentials_dict):
         refresh_token=credentials_dict['refresh_token'],
         token_uri=credentials_dict['token_uri'],
         client_id=credentials_dict['client_id'],
-        client_secret=credentials_dict['client_secret'],
-        scopes=credentials_dict['scopes']
+        client_secret': credentials_dict['client_secret'],
+        'scopes': credentials_dict['scopes']
     )
 
 # Установка вебхука для Telegram бота
@@ -160,12 +160,4 @@ def telegram_webhook():
     application.update_queue.put_nowait(update)
     return "", 200
 
-# Запуск Flask приложения для обработки Google OAuth callback и Telegram webhook
-logger.info("Установка вебхука для Telegram бота")
-application.run_webhook(
-    listen="0.0.0.0",
-    port=5000,
-    url_path=f"/webhook/{TELEGRAM_TOKEN}",
-    webhook_url=f"https://{MY_DOMAIN}/webhook/{TELEGRAM_TOKEN}"
-)
-logger.info("Запуск Flask приложения")
+logger.info("Финишная настройка завершена, готово к работе с Vercel")
