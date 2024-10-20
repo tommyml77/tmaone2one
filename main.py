@@ -72,7 +72,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 application.add_handler(CallbackQueryHandler(button))
 
 # Обработка редиректа после успешной авторизации
-@app.route("/callback")
+@app.route("/api/callback")
 def callback():
     try:
         logger.info("Получение токена через callback")
@@ -130,7 +130,7 @@ async def calendar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 application.add_handler(CommandHandler("calendar", calendar))
 
 # Подключение к TON Connect для подписки
-@app.route("/subscribe")
+@app.route("/api/subscribe")
 def subscribe():
     return "<h2>Интеграция с TON Connect в процессе разработки. Скоро здесь появится возможность подписки через TON Wallet.</h2>"
 
@@ -157,7 +157,7 @@ def build_credentials_from_dict(credentials_dict):
     )
 
 # Установка вебхука для Telegram бота
-@app.route(f"/webhook/{TELEGRAM_TOKEN}", methods=['POST'])
+@app.route(f"/api/webhook/{TELEGRAM_TOKEN}", methods=['POST'])
 def telegram_webhook():
     update = Update.de_json(request.get_json(), application.bot)
     application.update_queue.put_nowait(update)
